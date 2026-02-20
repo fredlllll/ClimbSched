@@ -15,25 +15,30 @@ ClimbSched ist auf Laravel umgestellt (inkl. Eloquent ORM) und kann lokal über 
 ```bash
 cp .env.example .env
 php artisan key:generate
-```
-
-DB in `.env` auf PostgreSQL setzen (`DB_CONNECTION=pgsql`, Host/User/Pass/DB) und dann:
-
-```bash
 php artisan migrate
 ```
 
 ## Apache2 starten (empfohlen)
-1. Projekt z. B. nach `/var/www/climbsched` legen.
-2. VHost automatisch einrichten:
+1. Apache + PHP-Modul installieren (Ubuntu/Debian):
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y apache2 libapache2-mod-php php8.3-xml php8.3-curl php8.3-mbstring php8.3-sqlite3
+   ```
+2. Projekt z. B. nach `/var/www/climbsched` legen.
+3. VHost automatisch einrichten:
    ```bash
    ./scripts/apache-setup.sh /var/www/climbsched
    ```
-3. Hosts-Datei ergänzen:
+4. Schreibrechte für Laravel setzen:
+   ```bash
+   sudo chown -R www-data:www-data storage bootstrap/cache database
+   sudo chmod -R ug+rwX storage bootstrap/cache database
+   ```
+5. Hosts-Datei ergänzen:
    ```text
    127.0.0.1 climbsched.local
    ```
-4. App im Browser öffnen: `http://climbsched.local`
+6. App öffnen: `http://climbsched.local`
 
 Die bereitgestellte VHost-Datei liegt hier:
 - `deploy/apache/climbsched.conf`
