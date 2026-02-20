@@ -32,3 +32,14 @@ Dieses MVP ist in plain PHP + PostgreSQL umgesetzt und trennt Seiten, Routing un
    ```
 
 Mails werden für lokale Entwicklung nach `storage/mail/mail.log` geschrieben.
+
+## Laravel via Composer
+
+Die Laravel-Abhängigkeit ist jetzt in `composer.json` hinterlegt.
+
+Installationsversuch in dieser Umgebung schlägt weiterhin fehl, da externer Zugriff auf Packagist/GitHub per Proxy mit HTTP 403 blockiert ist.
+Sobald Zugriff möglich ist, kann Laravel mit folgendem Befehl installiert werden:
+
+```bash
+composer install
+```
