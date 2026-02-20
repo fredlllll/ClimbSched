@@ -1,6 +1,6 @@
 # ClimbSched (Laravel)
 
-ClimbSched ist jetzt auf Laravel umgestellt (inkl. Eloquent ORM).
+ClimbSched ist auf Laravel umgestellt (inkl. Eloquent ORM) und kann lokal über **Apache2** betrieben werden.
 
 ## MVP-Funktionen
 - Registrierung/Login mit E-Mail + Passwort
@@ -21,6 +21,26 @@ DB in `.env` auf PostgreSQL setzen (`DB_CONNECTION=pgsql`, Host/User/Pass/DB) un
 
 ```bash
 php artisan migrate
+```
+
+## Apache2 starten (empfohlen)
+1. Projekt z. B. nach `/var/www/climbsched` legen.
+2. VHost automatisch einrichten:
+   ```bash
+   ./scripts/apache-setup.sh /var/www/climbsched
+   ```
+3. Hosts-Datei ergänzen:
+   ```text
+   127.0.0.1 climbsched.local
+   ```
+4. App im Browser öffnen: `http://climbsched.local`
+
+Die bereitgestellte VHost-Datei liegt hier:
+- `deploy/apache/climbsched.conf`
+
+## Fallback (nur Dev)
+Falls Apache lokal nicht verfügbar ist:
+```bash
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
