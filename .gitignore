@@ -2,3 +2,4 @@
 storage/mail/*.log
 storage/logs/*
 !.gitkeep
+vendor/

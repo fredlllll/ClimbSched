@@ -43,3 +43,15 @@ Sobald Zugriff möglich ist, kann Laravel mit folgendem Befehl installiert werde
 ```bash
 composer install
 ```
+
+## Composer 403 Troubleshooting
+
+Wenn `composer install` mit `CONNECT tunnel failed, response 403` fehlschlägt:
+
+1. Prüfe Proxy-Variablen (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`).
+2. Prüfe, ob eure Firewall/Proxy `repo.packagist.org`, `packagist.org`, `github.com` und `codeload.github.com` erlaubt.
+3. Nutzt wenn möglich ein internes Composer-Repository (Private Packagist, Satis, Artifactory, Nexus).
+4. Nur als kurzfristiger Notfall: lokal `composer install` ausführen und `vendor/` temporär mitliefern.
+
+Empfohlen bleibt: `vendor/` **nicht** dauerhaft versionieren, stattdessen `composer.lock` committen.
+
