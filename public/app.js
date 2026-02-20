@@ -1,6 +1,6 @@
 const page = document.body.dataset.page;
 const messageEl = document.getElementById('message');
-let csrf = '';
+const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 function setMessage(text, isError = false) {
   if (!messageEl) return;
@@ -11,15 +11,16 @@ function setMessage(text, isError = false) {
 async function api(url, options = {}) {
   const response = await fetch(url, {
     credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrf,
+      ...(options.headers || {}),
+    },
     ...options,
   });
-  return response.json();
-}
-
-async function loadCsrf() {
-  const data = await api('/api/csrf');
-  csrf = data.csrf;
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok && json?.message && !json.error) json.error = json.message;
+  return json;
 }
 
 function queryParams() {
@@ -40,32 +41,26 @@ async function ensureAuth(verified = false) {
 }
 
 function formatLocal(utcIso) {
-  const date = new Date(utcIso);
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(utcIso));
 }
 
 async function boot() {
-  await loadCsrf();
-
   if (page === 'login') {
-    const form = document.getElementById('login-form');
-    form?.addEventListener('submit', async (event) => {
+    document.getElementById('login-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const fd = new FormData(form);
-      const result = await api('/api/login', { method: 'POST', body: JSON.stringify({ _csrf: csrf, email: fd.get('email'), password: fd.get('password') }) });
+      const fd = new FormData(event.target);
+      const result = await api('/api/login', { method: 'POST', body: JSON.stringify({ email: fd.get('email'), password: fd.get('password') }) });
       if (result.error) return setMessage(result.error, true);
       window.location.href = '/';
     });
   }
 
   if (page === 'register') {
-    const form = document.getElementById('register-form');
-    form?.addEventListener('submit', async (event) => {
+    document.getElementById('register-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const fd = new FormData(form);
-      const result = await api('/api/register', { method: 'POST', body: JSON.stringify({ _csrf: csrf, name: fd.get('name'), email: fd.get('email'), password: fd.get('password') }) });
+      const fd = new FormData(event.target);
+      const result = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: fd.get('name'), email: fd.get('email'), password: fd.get('password') }) });
       if (result.error) return setMessage(result.error, true);
-      setMessage(result.message ?? 'Registriert');
       window.location.href = '/verify-email';
     });
   }
@@ -74,44 +69,34 @@ async function boot() {
     const user = await ensureAuth();
     if (!user) return;
 
-    const params = queryParams();
-    const uid = params.get('uid');
-    const token = params.get('token');
-    if (uid && token) {
-      const result = await api('/api/verify-email/confirm', { method: 'POST', body: JSON.stringify({ uid: Number(uid), token }) });
-      if (result.error) setMessage(result.error, true);
-      else {
-        setMessage('E-Mail bestätigt.');
-        window.location.href = '/';
-      }
+    if (user.email_verified_at) {
+      window.location.href = '/';
+      return;
     }
 
-    const resend = document.getElementById('resend-btn');
-    resend?.addEventListener('click', async () => {
-      const result = await api('/api/verify-email/resend', { method: 'POST', body: JSON.stringify({ _csrf: csrf }) });
+    document.getElementById('resend-btn')?.addEventListener('click', async () => {
+      const result = await api('/api/email/verification-notification', { method: 'POST', body: '{}' });
       setMessage(result.error ?? result.message ?? 'Gesendet', !!result.error);
     });
   }
 
   if (page === 'forgot') {
-    const form = document.getElementById('forgot-form');
-    form?.addEventListener('submit', async (event) => {
+    document.getElementById('forgot-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const fd = new FormData(form);
-      const result = await api('/api/password/forgot', { method: 'POST', body: JSON.stringify({ _csrf: csrf, email: fd.get('email') }) });
-      setMessage(result.error ?? result.message ?? 'Fertig', !!result.error);
+      const fd = new FormData(event.target);
+      const result = await api('/api/password/forgot', { method: 'POST', body: JSON.stringify({ email: fd.get('email') }) });
+      setMessage(result.error ?? result.message ?? 'Falls vorhanden, gesendet', !!result.error);
     });
   }
 
   if (page === 'reset') {
-    const form = document.getElementById('reset-form');
     const params = queryParams();
-    form?.addEventListener('submit', async (event) => {
+    document.getElementById('reset-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const fd = new FormData(form);
+      const fd = new FormData(event.target);
       const result = await api('/api/password/reset', {
         method: 'POST',
-        body: JSON.stringify({ _csrf: csrf, uid: Number(params.get('uid')), token: params.get('token'), password: fd.get('password') }),
+        body: JSON.stringify({ token: params.get('token'), email: fd.get('email'), password: fd.get('password') }),
       });
       if (result.error) return setMessage(result.error, true);
       window.location.href = '/login';
@@ -122,9 +107,8 @@ async function boot() {
     const user = await ensureAuth(true);
     if (!user) return;
 
-    const logout = document.getElementById('logout-btn');
-    logout?.addEventListener('click', async () => {
-      await api('/api/logout', { method: 'POST', body: JSON.stringify({ _csrf: csrf }) });
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await api('/api/logout', { method: 'POST', body: '{}' });
       window.location.href = '/login';
     });
 
@@ -136,8 +120,8 @@ async function boot() {
       end.setDate(end.getDate() + 8);
 
       const eventsBox = document.getElementById('events');
-      const qs = new URLSearchParams({ start: start.toISOString(), end: end.toISOString() });
-      const data = await api(`/api/events?${qs.toString()}`);
+      const data = await api(`/api/events?${new URLSearchParams({ start: start.toISOString(), end: end.toISOString() })}`);
+      if (data.error) return setMessage(data.error, true);
 
       if (!data.events.length) {
         eventsBox.innerHTML = '<p>Noch keine Termine.</p>';
@@ -160,26 +144,22 @@ async function boot() {
 
       eventsBox.querySelectorAll('button[data-action]').forEach((button) => {
         button.addEventListener('click', async () => {
-          const action = button.dataset.action;
-          const eventId = Number(button.dataset.id);
-          const route = action === 'join' ? '/api/events/join' : action === 'leave' ? '/api/events/leave' : '/api/events/delete';
-          await api(route, { method: 'POST', body: JSON.stringify({ _csrf: csrf, event_id: eventId }) });
+          const route = button.dataset.action === 'join' ? '/api/events/join' : button.dataset.action === 'leave' ? '/api/events/leave' : '/api/events/delete';
+          await api(route, { method: 'POST', body: JSON.stringify({ event_id: Number(button.dataset.id) }) });
           await renderEvents();
         });
       });
     };
 
-    const form = document.getElementById('event-form');
-    form?.addEventListener('submit', async (event) => {
+    document.getElementById('event-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const fd = new FormData(form);
+      const fd = new FormData(event.target);
       const result = await api('/api/events', {
         method: 'POST',
-        body: JSON.stringify({ _csrf: csrf, gym_name: fd.get('gym_name'), starts_local: fd.get('starts_local'), notes: fd.get('notes') }),
+        body: JSON.stringify({ gym_name: fd.get('gym_name'), starts_at_utc: new Date(fd.get('starts_local')).toISOString(), notes: fd.get('notes') }),
       });
-
       if (result.error) return setMessage(result.error, true);
-      form.reset();
+      event.target.reset();
       await renderEvents();
     });
 

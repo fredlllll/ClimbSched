@@ -1,57 +1,28 @@
-# ClimbSched MVP (API-first)
+# ClimbSched (Laravel)
 
-Dieses MVP ist in plain PHP + PostgreSQL umgesetzt und trennt Seiten, Routing und API voneinander.
+ClimbSched ist jetzt auf Laravel umgestellt (inkl. Eloquent ORM).
 
-> Hinweis: Ein echtes Laravel-Setup konnte in dieser Umgebung nicht installiert werden, da Composer-Zugriff auf Packagist (HTTP 403) blockiert ist.
-
-## Funktionen
+## MVP-Funktionen
 - Registrierung/Login mit E-Mail + Passwort
-- E-Mail-Verifizierung ist Pflicht vor Nutzung der Kalenderseite
-- Passwort-Reset per E-Mail-Link
-- Kalenderseite zeigt 8 Tage (gestern, heute, +6 Tage)
+- E-Mail-Verifizierung erforderlich vor Event-Nutzung
+- Passwort-Reset per E-Mail
+- 8-Tage-Ansicht: gestern + heute + nächste 6 Tage
 - Termine anlegen, beitreten, verlassen
 - Löschen nur durch Ersteller
-- Speicherung in UTC (`TIMESTAMPTZ`), Anzeige im Browser in lokaler Zeit
-- Frontend kommuniziert per JSON-API mit dem Backend
-
-## Struktur
-- `public/index.php`: Front Controller + Routing
-- `src/Http/*Controller.php`: API- und Page-Controller
-- `public/pages/*.html`: getrennte Seiten
-- `public/app.ts`: Frontend-Logik (API-Calls)
+- Speicherung von Terminen in UTC, Anzeige lokal im Browser
 
 ## Setup
-1. Datenbank anlegen und Schema einspielen:
-   ```bash
-   psql -U postgres -d climbsched -f database/schema.sql
-   ```
-2. Umgebungsvariablen setzen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, optional `APP_URL`
-3. App starten:
-   ```bash
-   php -S 0.0.0.0:8000 -t public
-   ```
-
-Mails werden für lokale Entwicklung nach `storage/mail/mail.log` geschrieben.
-
-## Laravel via Composer
-
-Die Laravel-Abhängigkeit ist jetzt in `composer.json` hinterlegt.
-
-Installationsversuch in dieser Umgebung schlägt weiterhin fehl, da externer Zugriff auf Packagist/GitHub per Proxy mit HTTP 403 blockiert ist.
-Sobald Zugriff möglich ist, kann Laravel mit folgendem Befehl installiert werden:
-
 ```bash
-composer install
+cp .env.example .env
+php artisan key:generate
 ```
 
-## Composer 403 Troubleshooting
+DB in `.env` auf PostgreSQL setzen (`DB_CONNECTION=pgsql`, Host/User/Pass/DB) und dann:
 
-Wenn `composer install` mit `CONNECT tunnel failed, response 403` fehlschlägt:
+```bash
+php artisan migrate
+php artisan serve --host=0.0.0.0 --port=8000
+```
 
-1. Prüfe Proxy-Variablen (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`).
-2. Prüfe, ob eure Firewall/Proxy `repo.packagist.org`, `packagist.org`, `github.com` und `codeload.github.com` erlaubt.
-3. Nutzt wenn möglich ein internes Composer-Repository (Private Packagist, Satis, Artifactory, Nexus).
-4. Nur als kurzfristiger Notfall: lokal `composer install` ausführen und `vendor/` temporär mitliefern.
-
-Empfohlen bleibt: `vendor/` **nicht** dauerhaft versionieren, stattdessen `composer.lock` committen.
-
+## Mail
+Für lokale Entwicklung kann `MAIL_MAILER=log` verwendet werden; Verifizierungs-/Reset-Mails landen dann in `storage/logs/laravel.log`.
