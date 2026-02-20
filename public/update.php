@@ -6,12 +6,24 @@ declare(strict_types=1);
  * Emergency migration endpoint for shared hosting without shell access.
  *
  * IMPORTANT:
- * - Change UPDATE_PASSWORD before uploading.
+ * - Set UPDATE_PASSWORD in .env (do not hardcode secrets in this file).
  * - Remove this file after running migrations.
  */
-const UPDATE_PASSWORD = 'set-a-strong-password-here';
 
-$password = (string)($_GET['password'] ?? '');
+$projectRoot = dirname(__DIR__);
+require $projectRoot . '/vendor/autoload.php';
+
+$dotenv = Dotenv\Dotenv::createImmutable($projectRoot);
+$dotenv->safeLoad();
+
+$expectedPassword = $_ENV['UPDATE_PASSWORD'] ?? getenv('UPDATE_PASSWORD') ?: '';
+$password = (string) ($_GET['password'] ?? '');
+
+if ($expectedPassword === '') {
+    http_response_code(500);
+    echo 'UPDATE_PASSWORD is not configured in .env';
+    exit;
+}
 
 if ($password === '') {
     http_response_code(200);
@@ -32,13 +44,12 @@ if ($password === '') {
     exit;
 }
 
-if (!hash_equals(UPDATE_PASSWORD, $password)) {
+if (!hash_equals($expectedPassword, $password)) {
     http_response_code(403);
     echo 'Forbidden';
     exit;
 }
 
-$projectRoot = dirname(__DIR__);
 $artisanPath = $projectRoot . '/artisan';
 $phpBinary = PHP_BINARY;
 

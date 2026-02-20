@@ -67,12 +67,16 @@ Für lokale Entwicklung kann `MAIL_MAILER=log` verwendet werden; Verifizierungs-
 ## No-shell fallback: one-time migration via HTTP
 If your managed host does not provide shell access and cron cannot be run on-demand, you can use `public/update.php` temporarily.
 
-1. Edit `public/update.php` and set `UPDATE_PASSWORD` to a strong password.
-2. Call:
+1. Add `UPDATE_PASSWORD` to `.env` with a strong password (do **not** hardcode it in `public/update.php`).
+2. Example `.env` line:
+   ```env
+   UPDATE_PASSWORD=very-long-random-secret
+   ```
+3. Call:
    - `https://your-subdomain.example/update.php?password=YOUR_PASSWORD`
-3. This endpoint can only run:
+4. This endpoint can only run:
    - `php artisan migrate --force --no-interaction`
-4. **Delete `public/update.php` immediately after migration succeeds.**
+5. **Delete `public/update.php` immediately after migration succeeds.**
 
 Security notes:
 - keep the password long/random
