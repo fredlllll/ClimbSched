@@ -61,3 +61,20 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 ## Mail
 Für lokale Entwicklung kann `MAIL_MAILER=log` verwendet werden; Verifizierungs-/Reset-Mails landen dann in `storage/logs/laravel.log`.
+
+
+
+## No-shell fallback: one-time migration via HTTP
+If your managed host does not provide shell access and cron cannot be run on-demand, you can use `public/update.php` temporarily.
+
+1. Edit `public/update.php` and set `UPDATE_PASSWORD` to a strong password.
+2. Call:
+   - `https://your-subdomain.example/update.php?password=YOUR_PASSWORD`
+3. This endpoint can only run:
+   - `php artisan migrate --force --no-interaction`
+4. **Delete `public/update.php` immediately after migration succeeds.**
+
+Security notes:
+- keep the password long/random
+- use HTTPS only
+- never keep `update.php` deployed permanently
