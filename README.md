@@ -18,11 +18,21 @@ php artisan key:generate
 php artisan migrate
 ```
 
+Datenbank in `.env` für MySQL konfigurieren:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=climbsched
+DB_USERNAME=dein_user
+DB_PASSWORD=dein_passwort
+```
+
 ## Apache2 starten (empfohlen)
 1. Apache + PHP-Modul installieren (Ubuntu/Debian):
    ```bash
    sudo apt-get update
-   sudo apt-get install -y apache2 libapache2-mod-php php8.3-xml php8.3-curl php8.3-mbstring php8.3-sqlite3
+   sudo apt-get install -y apache2 libapache2-mod-php php8.3-xml php8.3-curl php8.3-mbstring php8.3-mysql
    ```
 2. Projekt z. B. nach `/var/www/climbsched` legen.
 3. VHost automatisch einrichten:
@@ -31,8 +41,8 @@ php artisan migrate
    ```
 4. Schreibrechte für Laravel setzen:
    ```bash
-   sudo chown -R www-data:www-data storage bootstrap/cache database
-   sudo chmod -R ug+rwX storage bootstrap/cache database
+   sudo chown -R www-data:www-data storage bootstrap/cache
+   sudo chmod -R ug+rwX storage bootstrap/cache
    ```
 5. Hosts-Datei ergänzen:
    ```text
