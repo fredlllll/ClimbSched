@@ -51,7 +51,7 @@ if (!hash_equals($expectedPassword, $password)) {
 }
 
 $artisanPath = $projectRoot . '/artisan';
-$phpBinary = PHP_BINARY;
+$phpBinary = $_ENV['UPDATE_PHP_BINARY'] ?? getenv('UPDATE_PHP_BINARY') ?: PHP_BINARY;
 
 $command = escapeshellarg($phpBinary)
     . ' ' . escapeshellarg($artisanPath)
@@ -62,6 +62,7 @@ $returnCode = 1;
 exec($command . ' 2>&1', $output, $returnCode);
 
 header('Content-Type: text/plain; charset=utf-8');
+echo "PHP binary: {$phpBinary}\n";
 echo "Command: php artisan migrate --force --no-interaction\n";
 echo "Exit code: {$returnCode}\n\n";
 echo implode("\n", $output);

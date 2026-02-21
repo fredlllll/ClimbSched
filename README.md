@@ -72,11 +72,15 @@ If your managed host does not provide shell access and cron cannot be run on-dem
    ```env
    UPDATE_PASSWORD=very-long-random-secret
    ```
-3. Call:
+3. Optional (cPanel mismatch fix): set `UPDATE_PHP_BINARY` in `.env`, e.g.
+   ```env
+   UPDATE_PHP_BINARY=/opt/cpanel/ea-php82/root/usr/bin/php
+   ```
+4. Call:
    - `https://your-subdomain.example/update.php?password=YOUR_PASSWORD`
-4. This endpoint can only run:
+5. This endpoint can only run:
    - `php artisan migrate --force --no-interaction`
-5. **Delete `public/update.php` immediately after migration succeeds.**
+6. **Delete `public/update.php` immediately after migration succeeds.**
 
 Security notes:
 - keep the password long/random
