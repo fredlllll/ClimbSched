@@ -83,7 +83,7 @@ if ($password === '') {
         <button type="submit">Run composer install --no-interaction --no-dev --optimize-autoloader</button>
       </form>
       <p>This endpoint attempts to run <code>composer install --no-interaction --no-dev --optimize-autoloader</code>.</p>
-      <p>It will use <code>UPDATE_COMPOSER_BINARY</code> if set, then <code>composer.phar</code> in project root, then plain <code>composer</code>.</p>
+      <p>It will use <code>COMPOSER_PHAR</code> if set, then <code>composer.phar</code> in project root, then plain <code>composer</code>.</p>
     </body>
     </html>
     <?php
@@ -96,12 +96,18 @@ if (!hash_equals($expectedPassword, $password)) {
     exit;
 }
 
-$phpBinary = readEnvValue($projectRoot, 'UPDATE_PHP_BINARY');
+$phpBinary = readEnvValue($projectRoot, 'PHP_BINARY');
+if ($phpBinary === '') {
+    $phpBinary = readEnvValue($projectRoot, 'UPDATE_PHP_BINARY');
+}
 if ($phpBinary === '') {
     $phpBinary = PHP_BINARY;
 }
 
-$composerBinary = readEnvValue($projectRoot, 'UPDATE_COMPOSER_BINARY');
+$composerBinary = readEnvValue($projectRoot, 'COMPOSER_PHAR');
+if ($composerBinary === '') {
+    $composerBinary = readEnvValue($projectRoot, 'UPDATE_COMPOSER_BINARY');
+}
 $composerCandidates = array_values(array_filter([
     $composerBinary,
     $projectRoot . '/composer.phar',
