@@ -203,6 +203,21 @@ if (str_ends_with($composerBinary, '.phar') && !is_file($composerBinary)) {
 
 $composerCandidates = [$composerBinary];
 
+
+$composerHome = readEnvValue($projectRoot, 'COMPOSER_HOME');
+if ($composerHome === '') {
+    $composerHome = $projectRoot . '/.composer-home';
+}
+
+if (!is_dir($composerHome)) {
+    @mkdir($composerHome, 0755, true);
+}
+
+if (!is_dir($composerHome) || !is_writable($composerHome)) {
+    $output[] = "Composer home is missing or not writable: {$composerHome}";
+    $output[] = '';
+}
+
 chdir($projectRoot);
 
 $commandSuffix = ' install --no-interaction --no-dev --optimize-autoloader';
@@ -215,9 +230,11 @@ foreach ($composerCandidates as $candidate) {
         continue;
     }
 
+    $envPrefix = 'HOME=' . escapeshellarg($composerHome) . ' COMPOSER_HOME=' . escapeshellarg($composerHome) . ' ';
+
     $command = str_ends_with($candidate, '.phar')
-        ? escapeshellarg($phpBinary) . ' ' . escapeshellarg($candidate) . $commandSuffix
-        : escapeshellarg($candidate) . $commandSuffix;
+        ? $envPrefix . escapeshellarg($phpBinary) . ' ' . escapeshellarg($candidate) . $commandSuffix
+        : $envPrefix . escapeshellarg($candidate) . $commandSuffix;
 
     $trialOutput = [];
     $trialCode = 1;
