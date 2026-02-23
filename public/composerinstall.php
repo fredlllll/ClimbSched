@@ -98,16 +98,10 @@ if (!hash_equals($expectedPassword, $password)) {
 
 $phpBinary = readEnvValue($projectRoot, 'PHP_BINARY');
 if ($phpBinary === '') {
-    $phpBinary = readEnvValue($projectRoot, 'UPDATE_PHP_BINARY');
-}
-if ($phpBinary === '') {
     $phpBinary = PHP_BINARY;
 }
 
 $composerBinary = readEnvValue($projectRoot, 'COMPOSER_PHAR');
-if ($composerBinary === '') {
-    $composerBinary = readEnvValue($projectRoot, 'UPDATE_COMPOSER_BINARY');
-}
 $composerCandidates = array_values(array_filter([
     $composerBinary,
     $projectRoot . '/composer.phar',

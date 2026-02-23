@@ -51,7 +51,7 @@ if (!hash_equals($expectedPassword, $password)) {
 }
 
 $artisanPath = $projectRoot . '/artisan';
-$phpBinary = $_ENV['PHP_BINARY'] ?? getenv('PHP_BINARY') ?: ($_ENV['UPDATE_PHP_BINARY'] ?? getenv('UPDATE_PHP_BINARY') ?: PHP_BINARY);
+$phpBinary = $_ENV['PHP_BINARY'] ?? getenv('PHP_BINARY') ?: PHP_BINARY;
 
 $command = escapeshellarg($phpBinary)
     . ' ' . escapeshellarg($artisanPath)
