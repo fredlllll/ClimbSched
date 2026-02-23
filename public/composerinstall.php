@@ -163,9 +163,9 @@ if ($password === '') {
       <h1>Run composer install</h1>
       <form method="get">
         <label>Password <input type="password" name="password" required></label>
-        <button type="submit">Run composer install --no-interaction --no-dev --optimize-autoloader</button>
+        <button type="submit">Run composer install --no-interaction --no-dev --optimize-autoloader --no-scripts</button>
       </form>
-      <p>This endpoint attempts to run <code>composer install --no-interaction --no-dev --optimize-autoloader</code>.</p>
+      <p>This endpoint attempts to run <code>composer install --no-interaction --no-dev --optimize-autoloader --no-scripts</code>.</p>
       <p>It will use <code>COMPOSER_PHAR</code> if set; otherwise it uses <code>composer.phar</code> in the project root and runs it via PHP.</p>
     </body>
     </html>
@@ -221,6 +221,11 @@ if (!is_dir($composerHome) || !is_writable($composerHome)) {
 chdir($projectRoot);
 
 $commandSuffix = ' install --no-interaction --no-dev --optimize-autoloader';
+
+$runScripts = strtolower(readEnvValue($projectRoot, 'COMPOSER_RUN_SCRIPTS'));
+$disableScriptsFlag = ($runScripts === '1' || $runScripts === 'true' || $runScripts === 'yes' || $runScripts === 'on')
+    ? ''
+    : ' --no-scripts';
 $returnCode = 1;
 $executedCommand = '';
 
@@ -233,8 +238,8 @@ foreach ($composerCandidates as $candidate) {
     $envPrefix = 'HOME=' . escapeshellarg($composerHome) . ' COMPOSER_HOME=' . escapeshellarg($composerHome) . ' ';
 
     $command = str_ends_with($candidate, '.phar')
-        ? $envPrefix . escapeshellarg($phpBinary) . ' ' . escapeshellarg($candidate) . $commandSuffix
-        : $envPrefix . escapeshellarg($candidate) . $commandSuffix;
+        ? $envPrefix . escapeshellarg($phpBinary) . ' ' . escapeshellarg($candidate) . $commandSuffix . $disableScriptsFlag
+        : $envPrefix . escapeshellarg($candidate) . $commandSuffix . $disableScriptsFlag;
 
     $trialOutput = [];
     $trialCode = 1;
@@ -255,5 +260,6 @@ header('Content-Type: text/plain; charset=utf-8');
 echo "PHP binary: {$phpBinary}\n";
 echo "Composer override: " . ($composerBinary !== '' ? $composerBinary : '(none)') . "\n";
 echo "Exit code: {$returnCode}\n";
+echo "Scripts mode: " . ($disableScriptsFlag === "" ? "enabled" : "disabled (--no-scripts)") . "\n";
 echo "Last command: {$executedCommand}\n\n";
 echo implode("\n", $output);
