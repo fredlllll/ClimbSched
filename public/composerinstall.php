@@ -83,7 +83,7 @@ if ($password === '') {
         <button type="submit">Run composer install --no-interaction --no-dev --optimize-autoloader</button>
       </form>
       <p>This endpoint attempts to run <code>composer install --no-interaction --no-dev --optimize-autoloader</code>.</p>
-      <p>It will use <code>COMPOSER_PHAR</code> if set, then <code>composer.phar</code> in project root, then plain <code>composer</code>.</p>
+      <p>It will use <code>COMPOSER_PHAR</code> if set; otherwise it uses <code>composer.phar</code> in the project root and runs it via PHP.</p>
     </body>
     </html>
     <?php
@@ -102,15 +102,16 @@ if ($phpBinary === '') {
 }
 
 $composerBinary = readEnvValue($projectRoot, 'COMPOSER_PHAR');
-$composerCandidates = array_values(array_filter([
-    $composerBinary,
-    $projectRoot . '/composer.phar',
-    'composer',
-]));
 
-if ($composerBinary === '' && !is_file($projectRoot . '/composer.phar')) {
-    @copy('https://getcomposer.org/composer-stable.phar', $projectRoot . '/composer.phar');
+if ($composerBinary === '') {
+    $composerBinary = $projectRoot . '/composer.phar';
 }
+
+if (str_ends_with($composerBinary, '.phar') && !is_file($composerBinary)) {
+    @copy('https://getcomposer.org/composer-stable.phar', $composerBinary);
+}
+
+$composerCandidates = [$composerBinary];
 
 chdir($projectRoot);
 
@@ -120,7 +121,9 @@ $returnCode = 1;
 $executedCommand = '';
 
 foreach ($composerCandidates as $candidate) {
-    if ($candidate === $projectRoot . '/composer.phar' && !is_file($candidate)) {
+    if (str_ends_with($candidate, '.phar') && !is_file($candidate)) {
+        $output = array_merge($output, ["Missing composer phar: {$candidate}", '']);
+        $returnCode = 1;
         continue;
     }
 
