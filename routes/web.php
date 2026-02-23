@@ -12,6 +12,7 @@ Route::get('/register', [PageController::class, 'register']);
 Route::get('/verify-email', [PageController::class, 'verifyEmail'])->middleware('auth');
 Route::get('/forgot-password', [PageController::class, 'forgotPassword']);
 Route::get('/reset-password', [PageController::class, 'resetPassword']);
+Route::get('/events/new', [PageController::class, 'createEvent'])->middleware('auth');
 
 Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
     $request->fulfill();

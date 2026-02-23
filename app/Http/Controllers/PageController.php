@@ -35,4 +35,10 @@ class PageController extends Controller
     {
         return view('pages.verify-email');
     }
+
+    public function createEvent(): View
+    {
+        return view('pages.create-event');
+    }
 }
+

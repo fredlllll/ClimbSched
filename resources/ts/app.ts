@@ -2,6 +2,10 @@ const page = document.body.dataset.page;
 const messageEl = document.getElementById('message');
 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
+const CALENDAR_DAYS_BEFORE_TODAY = 1;
+const CALENDAR_DAYS_AFTER_TODAY = 7;
+const CALENDAR_DAY_START_HOUR = 6;
+
 function setMessage(text, isError = false) {
   if (!messageEl) return;
   messageEl.textContent = text;
@@ -42,6 +46,32 @@ async function ensureAuth(verified = false) {
 
 function formatLocal(utcIso) {
   return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(utcIso));
+}
+
+function attachLogoutHandler() {
+  document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    await api('/api/logout', { method: 'POST', body: '{}' });
+    window.location.href = '/login';
+  });
+}
+
+function dayKeyForDisplay(date) {
+  const shifted = new Date(date);
+  shifted.setHours(shifted.getHours() - CALENDAR_DAY_START_HOUR);
+  return shifted.toISOString().slice(0, 10);
+}
+
+function buildCalendarRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - CALENDAR_DAYS_BEFORE_TODAY);
+  start.setHours(CALENDAR_DAY_START_HOUR, 0, 0, 0);
+
+  const totalDays = CALENDAR_DAYS_BEFORE_TODAY + 1 + CALENDAR_DAYS_AFTER_TODAY;
+  const end = new Date(start);
+  end.setHours(end.getHours() + (totalDays * 24));
+
+  return { start, end, totalDays };
 }
 
 async function boot() {
@@ -107,40 +137,68 @@ async function boot() {
     const user = await ensureAuth(true);
     if (!user) return;
 
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-      await api('/api/logout', { method: 'POST', body: '{}' });
-      window.location.href = '/login';
-    });
+    attachLogoutHandler();
 
     const renderEvents = async () => {
-      const start = new Date();
-      start.setDate(start.getDate() - 1);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 8);
-
+      const { start, end, totalDays } = buildCalendarRange();
       const eventsBox = document.getElementById('events');
       const data = await api(`/api/events?${new URLSearchParams({ start: start.toISOString(), end: end.toISOString() })}`);
       if (data.error) return setMessage(data.error, true);
 
-      if (!data.events.length) {
-        eventsBox.innerHTML = '<p>Noch keine Termine.</p>';
-        return;
+      const eventsByDayAndHour = new Map();
+      for (const event of data.events) {
+        const localStart = new Date(event.starts_at_utc);
+        const dayKey = dayKeyForDisplay(localStart);
+        const displayHour = ((localStart.getHours() - CALENDAR_DAY_START_HOUR + 24) % 24) + CALENDAR_DAY_START_HOUR;
+        const slotKey = `${dayKey}-${displayHour}`;
+        if (!eventsByDayAndHour.has(slotKey)) eventsByDayAndHour.set(slotKey, []);
+        eventsByDayAndHour.get(slotKey).push(event);
       }
 
-      eventsBox.innerHTML = data.events.map((event) => `
-        <article>
-          <h4>${event.gym_name}</h4>
-          <p><strong>Start:</strong> ${formatLocal(event.starts_at_utc)}</p>
-          <p><strong>Erstellt von:</strong> ${event.creator_name}</p>
-          <p><strong>Teilnehmer:</strong> ${event.participants}</p>
-          ${event.notes ? `<p>${event.notes}</p>` : ''}
-          <div class="actions">
-            <button data-action="${event.joined ? 'leave' : 'join'}" data-id="${event.id}">${event.joined ? 'Verlassen' : 'Beitreten'}</button>
-            ${event.creator_id === user.id ? `<button data-action="delete" data-id="${event.id}">Löschen</button>` : ''}
-          </div>
-        </article>
-      `).join('');
+      const daySections = [];
+      for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
+        const dayStart = new Date(start);
+        dayStart.setDate(dayStart.getDate() + dayOffset);
+        const dayKey = dayKeyForDisplay(dayStart);
+        const dayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: '2-digit', month: '2-digit' }).format(dayStart);
+
+        const slotRows = [];
+        for (let hour = CALENDAR_DAY_START_HOUR; hour < CALENDAR_DAY_START_HOUR + 24; hour++) {
+          const slotKey = `${dayKey}-${hour}`;
+          const slotEvents = (eventsByDayAndHour.get(slotKey) || []).sort((a, b) => new Date(a.starts_at_utc) - new Date(b.starts_at_utc));
+          const hourLabel = `${String(hour % 24).padStart(2, '0')}:00`;
+
+          slotRows.push(`
+            <div class="calendar-slot">
+              <div class="calendar-time">${hourLabel}</div>
+              <div class="calendar-events">
+                ${slotEvents.map((event) => `
+                  <article>
+                    <h4>${event.gym_name}</h4>
+                    <p><strong>Start:</strong> ${formatLocal(event.starts_at_utc)}</p>
+                    <p><strong>Erstellt von:</strong> ${event.creator_name}</p>
+                    <p><strong>Teilnehmer:</strong> ${event.participants}</p>
+                    ${event.notes ? `<p>${event.notes}</p>` : ''}
+                    <div class="actions">
+                      <button data-action="${event.joined ? 'leave' : 'join'}" data-id="${event.id}">${event.joined ? 'Verlassen' : 'Beitreten'}</button>
+                      ${event.creator_id === user.id ? `<button data-action="delete" data-id="${event.id}">Löschen</button>` : ''}
+                    </div>
+                  </article>
+                `).join('')}
+              </div>
+            </div>
+          `);
+        }
+
+        daySections.push(`
+          <section class="calendar-day">
+            <h3>${dayLabel}</h3>
+            ${slotRows.join('')}
+          </section>
+        `);
+      }
+
+      eventsBox.innerHTML = daySections.join('');
 
       eventsBox.querySelectorAll('button[data-action]').forEach((button) => {
         button.addEventListener('click', async () => {
@@ -151,6 +209,15 @@ async function boot() {
       });
     };
 
+    await renderEvents();
+  }
+
+  if (page === 'event-create') {
+    const user = await ensureAuth(true);
+    if (!user) return;
+
+    attachLogoutHandler();
+
     document.getElementById('event-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
       const fd = new FormData(event.target);
@@ -159,11 +226,8 @@ async function boot() {
         body: JSON.stringify({ gym_name: fd.get('gym_name'), starts_at_utc: new Date(fd.get('starts_local')).toISOString(), notes: fd.get('notes') }),
       });
       if (result.error) return setMessage(result.error, true);
-      event.target.reset();
-      await renderEvents();
+      window.location.href = '/';
     });
-
-    await renderEvents();
   }
 }
 

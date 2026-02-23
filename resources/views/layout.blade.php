@@ -9,6 +9,6 @@
 </head>
 <body data-page="{{ $page ?? '' }}">
 @yield('body')
-<script src="/app.js" defer></script>
+<script src="/assets/app.js" defer></script>
 </body>
 </html>
