@@ -40,8 +40,18 @@
     }
     return me.user;
   }
-  function formatLocal(utcIso) {
-    return new Intl.DateTimeFormat(void 0, { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(utcIso));
+  function formatTime(utcIso) {
+    return new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }).format(new Date(utcIso));
+  }
+  function initials(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return parts.slice(0, 2).map((part) => part[0].toUpperCase()).join("");
+  }
+  function avatarColor(name) {
+    const palette = ["#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"];
+    const seed = String(name || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return palette[seed % palette.length];
   }
   function attachLogoutHandler() {
     document.getElementById("logout-btn")?.addEventListener("click", async () => {
@@ -125,51 +135,40 @@
         const eventsBox = document.getElementById("events");
         const data = await api(`/api/events?${new URLSearchParams({ start: start.toISOString(), end: end.toISOString() })}`);
         if (data.error) return setMessage(data.error, true);
-        const eventsByDayAndHour = /* @__PURE__ */ new Map();
+        const eventsByDay = /* @__PURE__ */ new Map();
         for (const event of data.events) {
           const localStart = new Date(event.starts_at_utc);
           const dayKey = dayKeyForDisplay(localStart);
-          const displayHour = (localStart.getHours() - CALENDAR_DAY_START_HOUR + 24) % 24 + CALENDAR_DAY_START_HOUR;
-          const slotKey = `${dayKey}-${displayHour}`;
-          if (!eventsByDayAndHour.has(slotKey)) eventsByDayAndHour.set(slotKey, []);
-          eventsByDayAndHour.get(slotKey).push(event);
+          if (!eventsByDay.has(dayKey)) eventsByDay.set(dayKey, []);
+          eventsByDay.get(dayKey).push(event);
         }
         const daySections = [];
         for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
           const dayStart = new Date(start);
           dayStart.setDate(dayStart.getDate() + dayOffset);
           const dayKey = dayKeyForDisplay(dayStart);
-          const dayLabel = new Intl.DateTimeFormat(void 0, { weekday: "long", day: "2-digit", month: "2-digit" }).format(dayStart);
-          const slotRows = [];
-          for (let hour = CALENDAR_DAY_START_HOUR; hour < CALENDAR_DAY_START_HOUR + 24; hour++) {
-            const slotKey = `${dayKey}-${hour}`;
-            const slotEvents = (eventsByDayAndHour.get(slotKey) || []).sort((a, b) => new Date(a.starts_at_utc) - new Date(b.starts_at_utc));
-            const hourLabel = `${String(hour % 24).padStart(2, "0")}:00`;
-            slotRows.push(`
-            <div class="calendar-slot">
-              <div class="calendar-time">${hourLabel}</div>
-              <div class="calendar-events">
-                ${slotEvents.map((event) => `
-                  <article>
-                    <h4>${event.gym_name}</h4>
-                    <p><strong>Start:</strong> ${formatLocal(event.starts_at_utc)}</p>
-                    <p><strong>Erstellt von:</strong> ${event.creator_name}</p>
-                    <p><strong>Teilnehmer:</strong> ${event.participants}</p>
-                    ${event.notes ? `<p>${event.notes}</p>` : ""}
-                    <div class="actions">
-                      <button data-action="${event.joined ? "leave" : "join"}" data-id="${event.id}">${event.joined ? "Verlassen" : "Beitreten"}</button>
-                      ${event.creator_id === user.id ? `<button data-action="delete" data-id="${event.id}">L\xF6schen</button>` : ""}
-                    </div>
-                  </article>
-                `).join("")}
+          const dayLabel = new Intl.DateTimeFormat(void 0, { weekday: "short", day: "2-digit", month: "2-digit" }).format(dayStart);
+          const dayEvents = (eventsByDay.get(dayKey) || []).sort((a, b) => new Date(a.starts_at_utc) - new Date(b.starts_at_utc));
+          const cards = dayEvents.map((event) => {
+            const names = event.participant_names?.length ? event.participant_names : Array.from({ length: Number(event.participants || 0) }, (_, index) => `User ${index + 1}`);
+            const avatars = names.map((name) => `<span class="avatar" style="background:${avatarColor(name)}" title="${name}">${initials(name)}</span>`).join("");
+            return `
+            <article class="event-card">
+              <h4>${event.gym_name}</h4>
+              <p class="event-time">${formatTime(event.starts_at_utc)}</p>
+              ${event.notes ? `<p class="event-notes">${event.notes}</p>` : ""}
+              <div class="participants-row">${avatars}</div>
+              <div class="actions">
+                <button data-action="${event.joined ? "leave" : "join"}" data-id="${event.id}">${event.joined ? "Verlassen" : "Beitreten"}</button>
+                ${event.creator_id === user.id ? `<button data-action="delete" data-id="${event.id}">L\xF6schen</button>` : ""}
               </div>
-            </div>
-          `);
-          }
+            </article>
+          `;
+          }).join("");
           daySections.push(`
           <section class="calendar-day">
             <h3>${dayLabel}</h3>
-            ${slotRows.join("")}
+            <div class="day-events">${cards || '<p class="day-empty">Keine Termine</p>'}</div>
           </section>
         `);
         }

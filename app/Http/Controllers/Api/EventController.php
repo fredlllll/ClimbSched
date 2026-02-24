@@ -23,6 +23,7 @@ class EventController extends Controller
 
         $events = Event::query()
             ->with('creator:id,name')
+            ->with('participants:id,name')
             ->withCount('participants')
             ->withExists(['participants as joined' => fn ($query) => $query->where('users.id', $userId)])
             ->whereBetween('starts_at_utc', [$data['start'], $data['end']])
@@ -36,6 +37,7 @@ class EventController extends Controller
                 'starts_at_utc' => $event->starts_at_utc?->toAtomString(),
                 'notes' => $event->notes,
                 'participants' => $event->participants_count,
+                'participant_names' => $event->participants->pluck('name')->filter()->values(),
                 'joined' => (bool) $event->joined,
             ]);
 
