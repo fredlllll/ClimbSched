@@ -36,6 +36,7 @@ class EventController extends Controller
                 'gym_name' => $event->gym_name,
                 'starts_at_utc' => $event->starts_at_utc?->toAtomString(),
                 'notes' => $event->notes,
+                'duration_minutes' => $event->duration_minutes,
                 'participants' => $event->participants_count,
                 'participant_names' => $event->participants->pluck('name')->filter()->values(),
                 'joined' => (bool) $event->joined,
@@ -62,6 +63,7 @@ class EventController extends Controller
                 'gym_name' => $event->gym_name,
                 'starts_at_utc' => $event->starts_at_utc?->toAtomString(),
                 'notes' => $event->notes,
+                'duration_minutes' => $event->duration_minutes,
                 'participants' => $event->participants_count,
                 'participant_names' => $event->participants->pluck('name')->filter()->values(),
                 'joined' => (bool) $event->joined,
@@ -74,6 +76,7 @@ class EventController extends Controller
         $data = $request->validate([
             'gym_name' => ['required', 'string', 'max:255'],
             'starts_at_utc' => ['required', 'date'],
+            'duration_minutes' => ['required', 'integer', 'min:15', 'max:1440'],
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -84,6 +87,7 @@ class EventController extends Controller
                 'creator_id' => $request->user()->id,
                 'gym_name' => $data['gym_name'],
                 'starts_at_utc' => $utc,
+                'duration_minutes' => $data['duration_minutes'],
                 'notes' => $data['notes'] ?? null,
             ]);
 

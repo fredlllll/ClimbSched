@@ -52,6 +52,17 @@ function formatTime(utcIso) {
   return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(utcIso));
 }
 
+
+function formatDuration(minutes) {
+  const value = Number(minutes || 0);
+  if (!value) return '-';
+  const hours = Math.floor(value / 60);
+  const rest = value % 60;
+  if (hours && rest) return `${hours}h ${rest}m`;
+  if (hours) return `${hours}h`;
+  return `${rest}m`;
+}
+
 function initials(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
@@ -232,6 +243,7 @@ async function boot() {
       <p><strong>Start:</strong> ${formatLocal(event.starts_at_utc)}</p>
       <p><strong>Erstellt von:</strong> ${event.creator_name || '-'}</p>
       <p><strong>Teilnehmer:</strong> ${event.participants}</p>
+      <p><strong>Dauer:</strong> ${formatDuration(event.duration_minutes)}</p>
       ${event.notes ? `<p><strong>Notiz:</strong> ${event.notes}</p>` : ''}
       <div class="participants-row">${avatars}</div>
       <div class="actions">
@@ -263,7 +275,12 @@ async function boot() {
       const fd = new FormData(event.target);
       const result = await api('/api/events', {
         method: 'POST',
-        body: JSON.stringify({ gym_name: fd.get('gym_name'), starts_at_utc: new Date(fd.get('starts_local')).toISOString(), notes: fd.get('notes') }),
+        body: JSON.stringify({
+          gym_name: fd.get('gym_name'),
+          starts_at_utc: new Date(fd.get('starts_local')).toISOString(),
+          duration_minutes: Number(fd.get('duration_minutes') || 120),
+          notes: fd.get('notes'),
+        }),
       });
       if (result.error) return setMessage(result.error, true);
       window.location.href = '/';

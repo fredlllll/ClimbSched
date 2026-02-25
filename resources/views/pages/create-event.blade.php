@@ -13,6 +13,7 @@
   <form id="event-form">
     <label>Halle <input name="gym_name" required></label>
     <label>Startzeit (lokal) <input type="datetime-local" name="starts_local" required></label>
+    <label>Dauer (Minuten) <input type="number" name="duration_minutes" min="15" max="1440" step="15" value="120" required></label>
     <label>Notiz <textarea name="notes"></textarea></label>
     <button type="submit">Termin erstellen</button>
   </form>
