@@ -6,6 +6,7 @@
   var CALENDAR_DAYS_BEFORE_TODAY = 1;
   var CALENDAR_DAYS_AFTER_TODAY = 7;
   var CALENDAR_DAY_START_HOUR = 6;
+  var CALENDAR_DAY_MINUTES = 24 * 60;
   function setMessage(text, isError = false) {
     if (!messageEl) return;
     messageEl.textContent = text;
@@ -42,6 +43,9 @@
   }
   function formatLocal(utcIso) {
     return new Intl.DateTimeFormat(void 0, { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(utcIso));
+  }
+  function formatTime(utcIso) {
+    return new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }).format(new Date(utcIso));
   }
   function formatDuration(minutes) {
     const value = Number(minutes || 0);
@@ -85,6 +89,33 @@
     const end = new Date(start);
     end.setHours(end.getHours() + totalDays * 24);
     return { start, end, totalDays };
+  }
+  function eventMinutesFromDayStart(utcIso) {
+    const local = new Date(utcIso);
+    const shiftedHour = (local.getHours() - CALENDAR_DAY_START_HOUR + 24) % 24;
+    return shiftedHour * 60 + local.getMinutes();
+  }
+  function layoutDayEvents(events) {
+    const sorted = [...events].map((event) => {
+      const startMin = Math.max(0, Math.min(CALENDAR_DAY_MINUTES - 1, eventMinutesFromDayStart(event.starts_at_utc)));
+      const duration = Math.max(15, Math.min(CALENDAR_DAY_MINUTES, Number(event.duration_minutes || 120)));
+      const endMin = Math.min(CALENDAR_DAY_MINUTES, startMin + duration);
+      return { ...event, startMin, endMin };
+    }).sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+    const active = [];
+    let maxCols = 1;
+    for (const event of sorted) {
+      for (let index = active.length - 1; index >= 0; index--) {
+        if (active[index].endMin <= event.startMin) active.splice(index, 1);
+      }
+      const used = new Set(active.map((item) => item.col));
+      let col = 0;
+      while (used.has(col)) col++;
+      event.col = col;
+      active.push(event);
+      if (col + 1 > maxCols) maxCols = col + 1;
+    }
+    return { events: sorted, maxCols };
   }
   async function boot() {
     if (page === "login") {
@@ -154,31 +185,48 @@
           if (!eventsByDay.has(dayKey)) eventsByDay.set(dayKey, []);
           eventsByDay.get(dayKey).push(event);
         }
-        const daySections = [];
+        const hourRows = Array.from({ length: 24 }, (_, i) => {
+          const hour = (CALENDAR_DAY_START_HOUR + i) % 24;
+          return `<div class="time-label">${String(hour).padStart(2, "0")}:00</div>`;
+        }).join("");
+        const dayColumns = [];
         for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
           const dayStart = new Date(start);
           dayStart.setDate(dayStart.getDate() + dayOffset);
           const dayKey = dayKeyForDisplay(dayStart);
           const dayLabel = new Intl.DateTimeFormat(void 0, { weekday: "short", day: "2-digit", month: "2-digit" }).format(dayStart);
-          const dayEvents = (eventsByDay.get(dayKey) || []).sort((a, b) => new Date(a.starts_at_utc) - new Date(b.starts_at_utc));
-          const cards = dayEvents.map((event) => {
+          const laidOut = layoutDayEvents(eventsByDay.get(dayKey) || []);
+          const cards = laidOut.events.map((event) => {
             const names = event.participant_names?.length ? event.participant_names : Array.from({ length: Number(event.participants || 0) }, (_, index) => `User ${index + 1}`);
             const avatars = names.map((name) => `<span class="avatar" style="background:${avatarColor(name)}" title="${name}">${initials(name)}</span>`).join("");
+            const top = event.startMin / CALENDAR_DAY_MINUTES * 100;
+            const height = Math.max(2.8, (event.endMin - event.startMin) / CALENDAR_DAY_MINUTES * 100);
+            const width = 100 / laidOut.maxCols;
+            const left = event.col * width;
             return `
-            <a class="event-card event-card-link" href="/events/${event.id}">
+            <a class="calendar-event" href="/events/${event.id}" style="top:${top}%;height:${height}%;left:${left}%;width:${width}%;">
               <h4>${event.gym_name}</h4>
+              <p>${formatTime(event.starts_at_utc)}</p>
               <div class="participants-row">${avatars}</div>
             </a>
           `;
           }).join("");
-          daySections.push(`
-          <section class="calendar-day">
+          dayColumns.push(`
+          <section class="calendar-day-column">
             <h3>${dayLabel}</h3>
-            <div class="day-events">${cards || '<p class="day-empty">Keine Termine</p>'}</div>
+            <div class="calendar-day-grid">
+              <div class="calendar-hour-lines"></div>
+              <div class="calendar-day-events">${cards}</div>
+            </div>
           </section>
         `);
         }
-        eventsBox.innerHTML = daySections.join("");
+        eventsBox.innerHTML = `
+        <div class="calendar-shell">
+          <aside class="calendar-times">${hourRows}</aside>
+          <div class="calendar-days">${dayColumns.join("")}</div>
+        </div>
+      `;
       };
       await renderEvents();
     }
