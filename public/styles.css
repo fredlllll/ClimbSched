@@ -22,6 +22,8 @@ button { cursor: pointer; background: #2563eb; border: none; color: #fff; border
 .day-empty { color: #6b7280; font-size: .85rem; }
 
 .event-card { background: #f8fafc; border-radius: .5rem; padding: .55rem; box-shadow: inset 0 0 0 1px #e2e8f0; }
+.event-card-link { display: block; text-decoration: none; color: inherit; }
+.event-card-link:hover { box-shadow: inset 0 0 0 2px #3b82f6; }
 .event-card h4 { margin: 0; font-size: .9rem; line-height: 1.2; }
 .event-time { margin: .2rem 0; color: #334155; font-size: .82rem; }
 .event-notes { margin: .25rem 0 .45rem; font-size: .78rem; color: #475569; }
@@ -30,3 +32,4 @@ button { cursor: pointer; background: #2563eb; border: none; color: #fff; border
 .avatar { width: 24px; height: 24px; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .65rem; font-weight: 700; }
 
 .actions { display: grid; gap: .3rem; }
+.event-detail-card { background: #fff; padding: 1rem; border-radius: .6rem; box-shadow: 0 1px 3px #0001; max-width: 680px; }

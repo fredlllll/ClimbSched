@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PageController extends Controller
@@ -40,5 +41,12 @@ class PageController extends Controller
     {
         return view('pages.create-event');
     }
+
+
+    public function eventDetails(Request $request, int $id): View
+    {
+        return view('pages.event-details', ['eventId' => $id]);
+    }
 }
+
 

@@ -40,8 +40,8 @@
     }
     return me.user;
   }
-  function formatTime(utcIso) {
-    return new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }).format(new Date(utcIso));
+  function formatLocal(utcIso) {
+    return new Intl.DateTimeFormat(void 0, { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(utcIso));
   }
   function initials(name) {
     const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -153,16 +153,10 @@
             const names = event.participant_names?.length ? event.participant_names : Array.from({ length: Number(event.participants || 0) }, (_, index) => `User ${index + 1}`);
             const avatars = names.map((name) => `<span class="avatar" style="background:${avatarColor(name)}" title="${name}">${initials(name)}</span>`).join("");
             return `
-            <article class="event-card">
+            <a class="event-card event-card-link" href="/events/${event.id}">
               <h4>${event.gym_name}</h4>
-              <p class="event-time">${formatTime(event.starts_at_utc)}</p>
-              ${event.notes ? `<p class="event-notes">${event.notes}</p>` : ""}
               <div class="participants-row">${avatars}</div>
-              <div class="actions">
-                <button data-action="${event.joined ? "leave" : "join"}" data-id="${event.id}">${event.joined ? "Verlassen" : "Beitreten"}</button>
-                ${event.creator_id === user.id ? `<button data-action="delete" data-id="${event.id}">L\xF6schen</button>` : ""}
-              </div>
-            </article>
+            </a>
           `;
           }).join("");
           daySections.push(`
@@ -173,15 +167,44 @@
         `);
         }
         eventsBox.innerHTML = daySections.join("");
-        eventsBox.querySelectorAll("button[data-action]").forEach((button) => {
-          button.addEventListener("click", async () => {
-            const route = button.dataset.action === "join" ? "/api/events/join" : button.dataset.action === "leave" ? "/api/events/leave" : "/api/events/delete";
-            await api(route, { method: "POST", body: JSON.stringify({ event_id: Number(button.dataset.id) }) });
-            await renderEvents();
-          });
-        });
       };
       await renderEvents();
+    }
+    if (page === "event-detail") {
+      const user = await ensureAuth(true);
+      if (!user) return;
+      attachLogoutHandler();
+      const eventId = Number(document.querySelector("main")?.dataset.eventId || 0);
+      if (!eventId) {
+        return setMessage("Ung\xFCltige Event-ID", true);
+      }
+      const result = await api(`/api/events/${eventId}`);
+      if (result.error || !result.event) return setMessage(result.error ?? "Termin nicht gefunden", true);
+      const event = result.event;
+      const names = event.participant_names?.length ? event.participant_names : Array.from({ length: Number(event.participants || 0) }, (_, index) => `User ${index + 1}`);
+      const avatars = names.map((name) => `<span class="avatar" style="background:${avatarColor(name)}" title="${name}">${initials(name)}</span>`).join("");
+      const container = document.getElementById("event-detail");
+      container.innerHTML = `
+      <h2>${event.gym_name}</h2>
+      <p><strong>Start:</strong> ${formatLocal(event.starts_at_utc)}</p>
+      <p><strong>Erstellt von:</strong> ${event.creator_name || "-"}</p>
+      <p><strong>Teilnehmer:</strong> ${event.participants}</p>
+      ${event.notes ? `<p><strong>Notiz:</strong> ${event.notes}</p>` : ""}
+      <div class="participants-row">${avatars}</div>
+      <div class="actions">
+        <button id="join-leave-btn">${event.joined ? "Verlassen" : "Beitreten"}</button>
+        ${event.creator_id === user.id ? '<button id="delete-btn">L\xF6schen</button>' : ""}
+      </div>
+    `;
+      document.getElementById("join-leave-btn")?.addEventListener("click", async () => {
+        const route = event.joined ? "/api/events/leave" : "/api/events/join";
+        await api(route, { method: "POST", body: JSON.stringify({ event_id: event.id }) });
+        window.location.reload();
+      });
+      document.getElementById("delete-btn")?.addEventListener("click", async () => {
+        await api("/api/events/delete", { method: "POST", body: JSON.stringify({ event_id: event.id }) });
+        window.location.href = "/";
+      });
     }
     if (page === "event-create") {
       const user = await ensureAuth(true);
