@@ -17,6 +17,7 @@ class Event extends Model
         'creator_id',
         'gym_name',
         'starts_at_utc',
+        'duration_minutes',
         'notes',
     ];
 
@@ -24,6 +25,7 @@ class Event extends Model
     {
         return [
             'starts_at_utc' => 'datetime',
+            'duration_minutes' => 'integer',
         ];
     }
 

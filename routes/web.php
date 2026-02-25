@@ -12,6 +12,8 @@ Route::get('/register', [PageController::class, 'register']);
 Route::get('/verify-email', [PageController::class, 'verifyEmail'])->middleware('auth');
 Route::get('/forgot-password', [PageController::class, 'forgotPassword']);
 Route::get('/reset-password', [PageController::class, 'resetPassword']);
+Route::get('/events/new', [PageController::class, 'createEvent'])->middleware('auth');
+Route::get('/events/{id}', [PageController::class, 'eventDetails'])->middleware('auth');
 
 Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
     $request->fulfill();
@@ -32,6 +34,7 @@ Route::prefix('api')->group(function (): void {
 
         Route::middleware('verified')->group(function (): void {
             Route::get('/events', [EventController::class, 'list']);
+            Route::get('/events/{id}', [EventController::class, 'show']);
             Route::post('/events', [EventController::class, 'create']);
             Route::post('/events/join', [EventController::class, 'join']);
             Route::post('/events/leave', [EventController::class, 'leave']);
