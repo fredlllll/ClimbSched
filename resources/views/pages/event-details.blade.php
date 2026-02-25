@@ -1,7 +1,7 @@
 @extends('layout', ['title' => 'Event Details', 'page' => 'event-detail'])
 @section('body')
 <header>
-  <h1>ClimbSched</h1>
+  <h1><a class="brand-link" href="/">ClimbSched</a></h1>
   <nav>
     <a href="/">Zum Kalender</a>
     <button id="logout-btn">Logout</button>
